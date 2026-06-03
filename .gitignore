@@ -2,6 +2,7 @@
 node_modules/
 output/
 crop/dist/
+viewer/dist/
 *.mp4
 *.mov
 *.webm
