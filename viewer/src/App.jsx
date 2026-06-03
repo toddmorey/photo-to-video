@@ -58,6 +58,29 @@ export default function App() {
 
   if (!videos.length) return null
 
+  const arrowBtn = (onClick, label, side) => (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        position: 'absolute', top: 0, [side]: 0,
+        width: 80, height: '100%',
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center',
+        justifyContent: side === 'left' ? 'flex-start' : 'flex-end',
+        padding: '0 18px',
+        opacity: 0.35,
+        color: '#fff',
+        fontSize: 36,
+        zIndex: 1,
+      }}
+      onMouseEnter={e => e.currentTarget.style.opacity = 0.85}
+      onMouseLeave={e => e.currentTarget.style.opacity = 0.35}
+    >
+      {side === 'left' ? '‹' : '›'}
+    </button>
+  )
+
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: '#000' }}
@@ -73,6 +96,8 @@ export default function App() {
         playsInline
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
       />
+      {arrowBtn(goPrev, 'Previous', 'left')}
+      {arrowBtn(goNext, 'Next', 'right')}
     </div>
   )
 }
