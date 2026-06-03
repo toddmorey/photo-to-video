@@ -2,6 +2,12 @@
 
 Convert images to video using OpenRouter AI models. Tracks which images have already been processed so reruns are safe by default.
 
+## Workflow
+
+1. Drop images into `./images/`
+2. Run the crop UI to visually trim each image to 16:9 (`cd crop && npm run dev`)
+3. Run `node index.js generate` to convert the cropped images to video
+
 ## Setup
 
 ```bash
@@ -50,6 +56,20 @@ photo-to-video/
 | `node index.js history` | List already-processed images |
 
 Run `node index.js generate --help` for the full flag reference.
+
+## Crop UI
+
+A visual 16:9 crop tool for preparing images before generation.
+
+```bash
+cd crop
+npm install   # first time only
+npm run dev   # opens at http://localhost:5173
+```
+
+The sidebar lists all images in `./images/`. Click one to load it. The crop box defaults to the largest centered 16:9 region. Drag to move, drag a corner handle to resize. Click **Save crop** to write the cropped JPEG back to `./images/` — if the original was a non-JPEG format the original file is removed so the generate pipeline doesn't process both.
+
+Saved images are marked with ✓ in the sidebar.
 
 ## Prompts
 

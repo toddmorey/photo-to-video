@@ -1,6 +1,7 @@
 .env
 node_modules/
 output/
+crop/dist/
 *.mp4
 *.mov
 *.webm
