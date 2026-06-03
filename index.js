@@ -22,7 +22,7 @@ program
   .option('-o, --output <dir>', 'Directory for output videos', './output')
   .option('-m, --model <model>', 'OpenRouter model ID', 'bytedance/seedance-1-5-pro')
   .option('-r, --resolution <WxH>', 'Video resolution', '1280x720')
-  .option('-d, --duration <seconds>', 'Video duration in seconds', '5')
+  .option('-d, --duration <seconds|auto>', 'Duration in seconds, or "auto" to let a vision model decide per image', '5')
   .option('-p, --prompt <text>', 'Override the prompt (otherwise uses prompts/default.txt)')
   .option('-n, --multiple <count>', 'Number of video variations per image', '1')
   .option('-f, --force', 'Reprocess images that have already been converted')

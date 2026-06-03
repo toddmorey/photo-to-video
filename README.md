@@ -94,13 +94,35 @@ images/
 
 `.txt` — plain text, used as-is.
 
-`.json` — must include a `prompt` key:
+`.json` — must include a `prompt` key, and optionally a `duration`:
 
 ```json
-{ "prompt": "Slowly zoom in on the subject with warm golden light." }
+{ "prompt": "Slowly zoom in on the subject with warm golden light.", "duration": 7 }
 ```
 
-If both exist, `.txt` takes precedence. If neither exists, the default prompt is used. The CLI marks images using a custom prompt with `[custom prompt]` in the output.
+Set `"duration": "auto"` to let a vision model recommend the clip length based on the action described:
+
+```json
+{ "prompt": "They pin on rank and then pose for the picture…", "duration": "auto" }
+```
+
+If both `.txt` and `.json` exist, `.txt` takes precedence (plain text files don't support per-image duration — use `.json` for that). If neither exists, the default prompt is used.
+
+The CLI marks images using a custom prompt with `[custom prompt]` and auto-duration results with `[Ns]` in the output.
+
+### Auto duration
+
+Pass `--duration auto` to have a vision model (`google/gemini-flash-1.5`) recommend the number of seconds for every image based on its prompt. Each image is evaluated independently — a simple gesture might get 3s, a multi-step sequence might get 8s.
+
+```bash
+node index.js generate --duration auto
+```
+
+Per-image JSON sidecars can also opt individual images into auto while the rest use the CLI default:
+
+```json
+{ "prompt": "Multi-step action sequence…", "duration": "auto" }
+```
 
 ## Skip logic
 
