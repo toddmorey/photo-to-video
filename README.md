@@ -51,14 +51,36 @@ photo-to-video/
 
 Run `node index.js generate --help` for the full flag reference.
 
-## Prompt
+## Prompts
 
-The default prompt lives in `prompts/default.txt` and is used for every generation unless you pass `-p`. Edit it directly or use:
+The default prompt lives in `prompts/default.txt` and is used for any image that doesn't have its own prompt. Edit it directly or use:
 
 ```bash
 node index.js prompt --set "Pan slowly across the scene with cinematic motion."
 node index.js prompt --edit
 ```
+
+### Per-image prompts
+
+Place a prompt file next to the image with the same base name:
+
+```
+images/
+  sunset.jpg
+  sunset.txt        ← plain text prompt for sunset.jpg
+  portrait.jpg
+  portrait.json     ← JSON prompt for portrait.jpg
+```
+
+`.txt` — plain text, used as-is.
+
+`.json` — must include a `prompt` key:
+
+```json
+{ "prompt": "Slowly zoom in on the subject with warm golden light." }
+```
+
+If both exist, `.txt` takes precedence. If neither exists, the default prompt is used. The CLI marks images using a custom prompt with `[custom prompt]` in the output.
 
 ## Skip logic
 
