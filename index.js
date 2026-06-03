@@ -6,7 +6,7 @@ const fs = require('fs-extra');
 const chalk = require('chalk');
 
 const { processImages, loadPrompt } = require('./lib/processor');
-const { checkStats, fetchKeyInfo } = require('./lib/api');
+const { checkStats, fetchKeyInfo, fetchVideoModels } = require('./lib/api');
 const { listProcessed } = require('./lib/tracker');
 
 program
@@ -20,7 +20,7 @@ program
   .description('Generate videos from images in a directory')
   .option('-i, --input <dir>', 'Directory of source images', './images')
   .option('-o, --output <dir>', 'Directory for output videos', './output')
-  .option('-m, --model <model>', 'OpenRouter model ID', 'runway/gen-3-alpha-turbo')
+  .option('-m, --model <model>', 'OpenRouter model ID', 'bytedance/seedance-1-5-pro')
   .option('-r, --resolution <WxH>', 'Video resolution', '1280x720')
   .option('-d, --duration <seconds>', 'Video duration in seconds', '5')
   .option('-p, --prompt <text>', 'Override the prompt (otherwise uses prompts/default.txt)')
@@ -37,6 +37,58 @@ Examples:
 `)
   .action(async (options) => {
     await processImages(options);
+  });
+
+// ── models ────────────────────────────────────────────────────────────────────
+program
+  .command('models')
+  .description('List available video models and their supported parameters')
+  .option('-m, --model <id>', 'Show details for a specific model ID')
+  .action(async (options) => {
+    const ora = require('ora');
+    const spinner = ora('Fetching video models…').start();
+    try {
+      const models = await fetchVideoModels();
+      spinner.stop();
+
+      if (!models.length) {
+        console.log(chalk.yellow('No video models found.'));
+        return;
+      }
+
+      if (options.model) {
+        const m = models.find((x) => x.id === options.model);
+        if (!m) {
+          console.log(chalk.red(`Model not found: ${options.model}`));
+          console.log(chalk.dim('Run `models` without a flag to list all available models.'));
+          return;
+        }
+        console.log(chalk.bold(`\n${m.name || m.id}`));
+        console.log(`ID:          ${m.id}`);
+        if (m.description) console.log(`Description: ${m.description}`);
+        if (m.pricing?.completion) console.log(`Pricing:     $${m.pricing.completion} / token`);
+        const params = m.allowed_passthrough_parameters ?? [];
+        console.log(`\nallowed_passthrough_parameters:`);
+        if (params.length) {
+          params.forEach((p) => console.log(`  ${chalk.cyan(p)}`));
+        } else {
+          console.log(chalk.dim('  (none listed)'));
+        }
+        console.log('');
+        return;
+      }
+
+      console.log(chalk.bold(`\n${models.length} video model(s)\n`));
+      models.forEach((m) => {
+        const params = (m.allowed_passthrough_parameters ?? []).join(', ') || chalk.dim('—');
+        console.log(`  ${chalk.bold(m.id)}`);
+        console.log(`    params: ${params}`);
+      });
+      console.log('');
+    } catch (err) {
+      spinner.fail(chalk.red(`Error: ${err.response?.data?.error?.message || err.message}`));
+      process.exit(1);
+    }
   });
 
 // ── stats ─────────────────────────────────────────────────────────────────────

@@ -42,6 +42,8 @@ photo-to-video/
 | `node index.js generate -n 3` | 3 video variations per image |
 | `node index.js generate -m luma/photon -d 8 -r 1920x1080` | Custom model, duration, resolution |
 | `node index.js generate -p "Custom motion prompt"` | One-shot prompt override |
+| `node index.js models` | List available video models and their supported parameters |
+| `node index.js models -m bytedance/seedance-1-5-pro` | Show a specific model's allowed parameters |
 | `node index.js prompt --set "..."` | Update the saved default prompt |
 | `node index.js prompt --edit` | Open prompt in `$EDITOR` |
 | `node index.js stats` | Credits used + recent generation history |
@@ -62,6 +64,15 @@ node index.js prompt --edit
 
 Once an image is converted, its record is written to `output/.processed.json`. On the next run, that image is skipped automatically. Use `--force` to reprocess, or `--dry-run` to see what would be skipped.
 
-## Note on video API compatibility
+## Model parameters
 
-OpenRouter's video generation API (`POST /api/v1/generation`) routes to providers like Runway, Luma, and Kling. The exact field names each model expects may vary. If a specific model returns an error, `lib/api.js:submitGeneration` is the place to adjust the request payload.
+Before each run, the CLI queries OpenRouter's Video Models API (`GET /api/v1/models?type=video`) and reads the `allowed_passthrough_parameters` field for the selected model. Only supported parameters are included in the generation request — unsupported fields are silently dropped, avoiding provider errors.
+
+To inspect what a model supports before running:
+
+```bash
+node index.js models
+node index.js models -m bytedance/seedance-1-5-pro
+```
+
+The default model is `bytedance/seedance-1-5-pro` (Seedance 2). If the exact model ID differs on your OpenRouter account, use `node index.js models` to find the correct one and pass it with `-m`.
