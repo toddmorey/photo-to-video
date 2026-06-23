@@ -17,6 +17,17 @@ function slugOf(name) {
   return name.replace(/\.[^.]+$/, '')
 }
 
+// Fisher-Yates shuffle, returns a new array. Used once per page load so the
+// clip order is randomized but stays stable until the app is refreshed.
+function shuffle(arr) {
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 // Cross-browser fullscreen helpers. iPadOS Safari (16.4+) supports the standard
 // Fullscreen API on a regular element, which hides the browser chrome; older
 // WebKit needs the webkit-prefixed variants.
@@ -37,17 +48,20 @@ export default function App() {
   const [view, setView] = useState('player')  // 'player' | 'gallery'
   const [loading, setLoading] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
+  const [atEnd, setAtEnd] = useState(false)   // shows the "Last video" overlay
   const touchStartX = useRef(null)
+  const atEndTimer = useRef(null)
 
-  // Load video list, restore index from URL hash
+  // Load video list (randomized once per page load), restore index from URL hash
   useEffect(() => {
     fetch('/api/videos')
       .then(r => r.json())
       .then(({ videos: list }) => {
-        setVideos(list)
+        const ordered = shuffle(list)
+        setVideos(ordered)
         const slug = location.hash.slice(1)
         if (slug) {
-          const i = list.findIndex(v => slugOf(v.name) === slug)
+          const i = ordered.findIndex(v => slugOf(v.name) === slug)
           if (i >= 0) setIndex(i)
         }
       })
@@ -75,7 +89,19 @@ export default function App() {
     }
   }, [])
 
-  const goNext = useCallback(() => setIndex(i => (i + 1) % videos.length), [videos.length])
+  // Advancing past the last clip stays put and flashes a brief "Last video"
+  // overlay instead of wrapping back to the start.
+  const goNext = useCallback(() => {
+    setIndex(i => {
+      if (i >= videos.length - 1) {
+        setAtEnd(true)
+        clearTimeout(atEndTimer.current)
+        atEndTimer.current = setTimeout(() => setAtEnd(false), 1500)
+        return i
+      }
+      return i + 1
+    })
+  }, [videos.length])
   const goPrev = useCallback(() => setIndex(i => (i - 1 + videos.length) % videos.length), [videos.length])
 
   const toggleFullscreen = useCallback(() => {
@@ -201,6 +227,25 @@ export default function App() {
         >
           <IconRefresh size={56} stroke={1.75}
             style={{ opacity: 0.85, animation: 'viewer-spin 1s linear infinite' }} />
+        </div>
+      )}
+
+      {/* Brief "Last video" overlay shown when trying to advance past the end. */}
+      {atEnd && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 3,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{
+            color: '#fff', background: 'rgba(0,0,0,0.6)',
+            padding: '12px 24px', borderRadius: 12,
+            fontSize: 18, fontWeight: 500, letterSpacing: 0.3,
+          }}>
+            Last video
+          </div>
         </div>
       )}
 
