@@ -20,6 +20,9 @@ export async function listCloudflareVideos({ accountId, token }) {
       name: v.meta?.name || v.meta?.filename || v.uid,
       uid: v.uid,
       duration: v.duration,
+      // Cloudflare auto-generates a thumbnail; the URL embeds the customer
+      // subdomain, so it's self-contained for the gallery grid.
+      thumbnail: v.thumbnail || null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
