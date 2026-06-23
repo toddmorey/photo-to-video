@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Stream } from '@cloudflare/stream-react'
 
 const SWIPE_THRESHOLD = 40
 
-function slugOf(filename) {
-  return filename.replace(/\.[^.]+$/, '')
+function slugOf(name) {
+  return name.replace(/\.[^.]+$/, '')
 }
 
 export default function App() {
-  const [videos, setVideos] = useState([])
+  const [videos, setVideos] = useState([])   // [{ name, uid, duration }]
   const [index, setIndex] = useState(0)
   const touchStartX = useRef(null)
 
@@ -15,20 +16,21 @@ export default function App() {
   useEffect(() => {
     fetch('/api/videos')
       .then(r => r.json())
-      .then(list => {
+      .then(({ videos: list }) => {
         setVideos(list)
         const slug = location.hash.slice(1)
         if (slug) {
-          const i = list.findIndex(v => slugOf(v) === slug)
+          const i = list.findIndex(v => slugOf(v.name) === slug)
           if (i >= 0) setIndex(i)
         }
       })
+      .catch(() => setVideos([]))
   }, [])
 
   // Keep URL hash in sync with current video
   useEffect(() => {
     if (!videos.length) return
-    history.replaceState(null, '', '#' + slugOf(videos[index]))
+    history.replaceState(null, '', '#' + slugOf(videos[index].name))
   }, [index, videos])
 
   const goNext = useCallback(() => setIndex(i => (i + 1) % videos.length), [videos.length])
@@ -58,6 +60,8 @@ export default function App() {
 
   if (!videos.length) return null
 
+  const current = videos[index]
+
   const arrowBtn = (onClick, label, side) => (
     <button
       onClick={onClick}
@@ -72,7 +76,7 @@ export default function App() {
         opacity: 0.35,
         color: '#fff',
         fontSize: 36,
-        zIndex: 1,
+        zIndex: 2,
       }}
       onMouseEnter={e => e.currentTarget.style.opacity = 0.85}
       onMouseLeave={e => e.currentTarget.style.opacity = 0.35}
@@ -82,20 +86,50 @@ export default function App() {
   )
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: '#000' }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      <video
-        key={index}
-        src={`/api/video/${encodeURIComponent(videos[index])}`}
-        autoPlay
-        loop
-        muted
-        playsInline
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    <div className="viewer-root" style={{ position: 'fixed', inset: 0, background: '#000' }}>
+      {/* Force the Cloudflare Stream iframe (and the fallback <video>) to fill the
+          viewport. The component's own height prop doesn't resolve through its
+          wrapper, so we pin the iframe with position:absolute instead. */}
+      <style>{`
+        .viewer-root iframe,
+        .viewer-root video {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          border: 0; object-fit: contain;
+        }
+      `}</style>
+
+      {current.uid ? (
+        <Stream
+          key={current.uid}
+          src={current.uid}
+          autoplay
+          loop
+          muted
+          controls={false}
+          preload="auto"
+          responsive={false}
+        />
+      ) : (
+        <video
+          key={current.name}
+          src={`/api/video/${encodeURIComponent(current.name)}`}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+      )}
+
+      {/* Transparent layer above the player iframe so swipe gestures register
+          (a cross-origin iframe would otherwise swallow touch events). */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        style={{ position: 'absolute', inset: 0, zIndex: 1 }}
       />
+
       {arrowBtn(goPrev, 'Previous', 'left')}
       {arrowBtn(goNext, 'Next', 'right')}
     </div>

@@ -1,0 +1,17 @@
+# Netlify config for the video viewer (lives in viewer/).
+# The repo root holds several tools; only the viewer is deployed.
+
+[build]
+  base = "viewer"
+  command = "npm run build"
+  publish = "dist"               # relative to base → viewer/dist
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"  # relative to base → viewer/netlify/functions
+  node_bundler = "esbuild"
+
+# /api/videos is handled in-code by viewer/netlify/functions/videos.mjs
+# (export const config = { path: '/api/videos' }), so no redirect rule is needed.
