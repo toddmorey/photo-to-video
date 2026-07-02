@@ -13,6 +13,34 @@ import {
 
 const SWIPE_THRESHOLD = 40
 
+// Old iOS Safari (14.x) doesn't reliably re-track `position:fixed; inset:0`
+// when the toolbar auto-hides/shows (e.g. right as video playback starts),
+// causing fixed-position containers to visibly "hop" to the stale viewport
+// size. Sizing explicitly from visualViewport sidesteps that.
+function useViewportSize() {
+  const [size, setSize] = useState(() => ({
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }))
+  useEffect(() => {
+    const vv = window.visualViewport
+    const update = () => setSize({
+      width: vv?.width ?? window.innerWidth,
+      height: vv?.height ?? window.innerHeight,
+    })
+    update()
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    return () => {
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return size
+}
+
 function slugOf(name) {
   return name.replace(/\.[^.]+$/, '')
 }
@@ -51,6 +79,7 @@ export default function App() {
   const [atEnd, setAtEnd] = useState(false)   // shows the "Last video" overlay
   const touchStartX = useRef(null)
   const atEndTimer = useRef(null)
+  const viewportSize = useViewportSize()
 
   // Load video list (randomized once per page load), restore index from URL hash
   useEffect(() => {
@@ -149,6 +178,7 @@ export default function App() {
         current={index}
         onPick={openFromGallery}
         onClose={() => setView('player')}
+        viewportSize={viewportSize}
       />
     )
   }
@@ -161,7 +191,14 @@ export default function App() {
   const onReady = () => setLoading(false)
 
   return (
-    <div className="viewer-root" style={{ position: 'fixed', inset: 0, background: '#000' }}>
+    <div
+      className="viewer-root"
+      style={{
+        position: 'fixed', top: 0, left: 0,
+        width: viewportSize.width, height: viewportSize.height,
+        background: '#000',
+      }}
+    >
       {/* Force the Cloudflare Stream iframe (and the fallback <video>) to fill the
           viewport. The component's own height prop doesn't resolve through its
           wrapper, so we pin the iframe with position:absolute instead. */}
@@ -318,14 +355,16 @@ function ArrowButton({ onClick, label, side, children }) {
 }
 
 // Thumbnail grid. Tapping a tile opens that clip in the player.
-function Gallery({ videos, current, onPick, onClose }) {
+function Gallery({ videos, current, onPick, onClose, viewportSize }) {
   // Track thumbnails that fail to load (e.g. a Cloudflare thumbnail that isn't
   // generated yet) so we can show the placeholder instead of a broken tile.
   const [failed, setFailed] = useState({})
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: '#0a0a0a', color: '#fff',
+        position: 'fixed', top: 0, left: 0,
+        width: viewportSize.width, height: viewportSize.height,
+        background: '#0a0a0a', color: '#fff',
         display: 'grid',
         // Fixed 4×3 grid that fills the viewport (12 clips). Extra clips flow
         // into equally-sized implicit rows.
