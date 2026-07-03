@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Stream } from '@cloudflare/stream-react'
 import {
   IconArrowsMaximize,
   IconArrowsMinimize,
@@ -199,11 +198,11 @@ export default function App() {
         background: '#000',
       }}
     >
-      {/* Force the Cloudflare Stream iframe (and the fallback <video>) to fill the
-          viewport. The component's own height prop doesn't resolve through its
-          wrapper, so we pin the iframe with position:absolute instead. */}
+      {/* Played as a plain <video> tag rather than Cloudflare's iframe player —
+          Safari has native HLS support, and this app only targets Apple devices,
+          so we get full control over sizing/CSS instead of a cross-origin
+          black box that can reflow internally in ways we can't see or fix. */}
       <style>{`
-        .viewer-root iframe,
         .viewer-root video {
           position: absolute; inset: 0;
           width: 100%; height: 100%;
@@ -212,41 +211,22 @@ export default function App() {
         @keyframes viewer-spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {current.uid ? (
-        <Stream
-          key={current.uid}
-          src={current.uid}
-          autoplay
-          loop
-          muted
-          controls={false}
-          preload="auto"
-          responsive={false}
-          onLoadStart={onBuffering}
-          onWaiting={onBuffering}
-          onStalled={onBuffering}
-          onPlaying={onReady}
-          onCanPlay={onReady}
-        />
-      ) : (
-        <video
-          key={current.name}
-          src={`/api/video/${encodeURIComponent(current.name)}`}
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          onLoadStart={onBuffering}
-          onWaiting={onBuffering}
-          onStalled={onBuffering}
-          onPlaying={onReady}
-          onCanPlay={onReady}
-        />
-      )}
+      <video
+        key={current.uid || current.name}
+        src={current.hls || `/api/video/${encodeURIComponent(current.name)}`}
+        autoPlay
+        loop
+        muted
+        playsInline
+        onLoadStart={onBuffering}
+        onWaiting={onBuffering}
+        onStalled={onBuffering}
+        onPlaying={onReady}
+        onCanPlay={onReady}
+      />
 
-      {/* Transparent layer above the player iframe so swipe gestures register
-          (a cross-origin iframe would otherwise swallow touch events). */}
+      {/* Transparent layer above the video so swipe gestures register
+          independent of any native video interactions. */}
       <div
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}

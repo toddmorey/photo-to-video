@@ -23,6 +23,10 @@ export async function listCloudflareVideos({ accountId, token }) {
       // Cloudflare auto-generates a thumbnail; the URL embeds the customer
       // subdomain, so it's self-contained for the gallery grid.
       thumbnail: v.thumbnail || null,
+      // Direct HLS manifest URL — played through a plain <video> tag instead
+      // of Cloudflare's iframe player, since Safari has native HLS support
+      // and this app only targets Apple devices for now.
+      hls: v.playback?.hls || null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
