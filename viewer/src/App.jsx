@@ -76,6 +76,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [fullscreen, setFullscreen] = useState(false)
   const [atEnd, setAtEnd] = useState(false)   // shows the "Last video" overlay
+  const [useHlsFallback, setUseHlsFallback] = useState(false)  // MP4 404'd → HLS
   const touchStartX = useRef(null)
   const atEndTimer = useRef(null)
   const viewportSize = useViewportSize()
@@ -95,6 +96,10 @@ export default function App() {
       })
       .catch(() => setVideos([]))
   }, [])
+
+  // Each clip is judged on its own: reset the MP4→HLS fallback on navigation so
+  // one clip's missing MP4 doesn't force HLS for the rest of the session.
+  useEffect(() => { setUseHlsFallback(false) }, [index])
 
   // Keep URL hash in sync with current video
   useEffect(() => {
@@ -184,6 +189,19 @@ export default function App() {
 
   const current = videos[index]
 
+  // Prefer the progressive MP4 (full resolution from frame one); fall back to
+  // the HLS manifest only if the MP4 isn't available/ready for this clip.
+  const localSrc = `/api/video/${encodeURIComponent(current.name)}`
+  const videoSrc = useHlsFallback
+    ? (current.hls || localSrc)
+    : (current.mp4 || current.hls || localSrc)
+
+  // If the MP4 URL fails (e.g. downloads not yet generated for this clip),
+  // drop to HLS so the clip still plays.
+  const onVideoError = () => {
+    if (!useHlsFallback && current.mp4 && current.hls) setUseHlsFallback(true)
+  }
+
   // Media events that bracket buffering, shared by the Stream component and the
   // local <video> fallback, so the spinner appears whenever playback stalls.
   const onBuffering = () => setLoading(true)
@@ -213,7 +231,7 @@ export default function App() {
 
       <video
         key={current.uid || current.name}
-        src={current.hls || `/api/video/${encodeURIComponent(current.name)}`}
+        src={videoSrc}
         autoPlay
         loop
         muted
@@ -223,6 +241,7 @@ export default function App() {
         onStalled={onBuffering}
         onPlaying={onReady}
         onCanPlay={onReady}
+        onError={onVideoError}
       />
 
       {/* Transparent layer above the video so swipe gestures register
